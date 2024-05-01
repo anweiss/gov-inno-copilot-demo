@@ -5,5 +5,13 @@
       "version": "latest",
       "profile": "default"
     }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "GitHub.copilot",
+        "GitHub.copilot-chat"
+      ]
+    }
   }
 }
