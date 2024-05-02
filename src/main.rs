@@ -1,9 +1,9 @@
 use std::num::NonZeroU32;
 
 use artem::{self, config::ConfigBuilder};
-use clap::{Arg, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use image::open;
-use reqwest::{self, Body};
+use reqwest;
 use tokio;
 
 #[derive(Parser)]
@@ -29,15 +29,17 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     match cli.command {
         Commands::Hello => hello(),
-        Commands::Joke => joke().await.unwrap(),
+        Commands::Joke => joke().await?,
         Commands::Fact => fact(),
-        Commands::Art { path } => art(&path),
+        Commands::Art { path } => art(&path)?,
     }
+
+    Ok(())
 }
 
 fn hello() {
@@ -62,19 +64,21 @@ fn fact() {
     println!("Did you know? Here's a government fact.");
 }
 
-fn art(path: &str) {
+fn art(path: &str) -> Result<(), &'static str> {
     let image = match open(path) {
         Ok(img) => img,
         Err(e) => {
             println!("Failed to open image: {}", e);
-            return;
+            return Ok(());
         }
     };
     let ascii_art = artem::convert(
         image,
         &ConfigBuilder::new()
-            .target_size(NonZeroU32::new(250).unwrap())
+            .target_size(NonZeroU32::new(250).ok_or("invalid size")?)
             .build(),
     );
     println!("{}", ascii_art);
+
+    Ok(())
 }
