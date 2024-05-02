@@ -1,1 +1,3 @@
+struct Cli {}
+
 fn main() {}
