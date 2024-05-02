@@ -1,6 +1,8 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, Arg};
 use reqwest;
 use tokio;
+use artem::{self, config::ConfigBuilder};
+use image::open;
 
 #[derive(Parser)]
 #[command(name = "govpilot", about = "A CLI for government innovation.", version = "0.1.0")]
@@ -14,7 +16,10 @@ enum Commands {
     Hello,
     Joke,
     Fact,
-    Art,
+    Art {
+        #[arg(short, long)]
+        path: String,
+    },
 }
 
 #[tokio::main]
@@ -25,7 +30,7 @@ async fn main() {
         Commands::Hello => hello(),
         Commands::Joke => joke().await,
         Commands::Fact => fact(),
-        Commands::Art => art(),
+        Commands::Art { path } => art(&path).await,
     }
 }
 
@@ -54,8 +59,16 @@ fn fact() {
     println!("Did you know? Here's a government fact.");
 }
 
-fn art() {
-    println!("Displaying government art.");
+async fn art(path: &str) {
+    let image = match open(path) {
+        Ok(img) => img,
+        Err(e) => {
+            println!("Failed to open image: {}", e);
+            return;
+        }
+    };
+    let ascii_art = artem::convert(image, &ConfigBuilder::new().build());
+    println!("{}", ascii_art);
 }
 
 #[derive(serde::Deserialize)]
