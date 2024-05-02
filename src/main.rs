@@ -1,11 +1,17 @@
-use clap::{Parser, Subcommand, Arg};
-use reqwest;
-use tokio;
+use std::num::NonZeroU32;
+
 use artem::{self, config::ConfigBuilder};
+use clap::{Arg, Parser, Subcommand};
 use image::open;
+use reqwest::{self, Body};
+use tokio;
 
 #[derive(Parser)]
-#[command(name = "govpilot", about = "A CLI for government innovation.", version = "0.1.0")]
+#[command(
+    name = "govpilot",
+    about = "A CLI for government innovation.",
+    version = "0.1.0"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -28,9 +34,9 @@ async fn main() {
 
     match cli.command {
         Commands::Hello => hello(),
-        Commands::Joke => joke().await,
+        Commands::Joke => joke().await.unwrap(),
         Commands::Fact => fact(),
-        Commands::Art { path } => art(&path).await,
+        Commands::Art { path } => art(&path),
     }
 }
 
@@ -38,28 +44,25 @@ fn hello() {
     println!("Hello from govpilot!");
 }
 
-async fn joke() {
-    let url = "https://icanhazdadjoke.com/";
-    let client = reqwest::Client::new();
-    let res = client.get(url)
+async fn joke() -> Result<(), reqwest::Error> {
+    let response = reqwest::Client::new()
+        .get("https://icanhazdadjoke.com/")
         .header("Accept", "application/json")
         .send()
-        .await
-        .expect("Failed to send request");
+        .await?
+        .json::<serde_json::Value>()
+        .await?;
 
-    if res.status().is_success() {
-        let joke = res.json::<Joke>().await.expect("Failed to parse joke");
-        println!("{}", joke.joke);
-    } else {
-        println!("Failed to fetch joke");
-    }
+    println!("{}", response["joke"].to_string());
+
+    Ok(())
 }
 
 fn fact() {
     println!("Did you know? Here's a government fact.");
 }
 
-async fn art(path: &str) {
+fn art(path: &str) {
     let image = match open(path) {
         Ok(img) => img,
         Err(e) => {
@@ -67,11 +70,11 @@ async fn art(path: &str) {
             return;
         }
     };
-    let ascii_art = artem::convert(image, &ConfigBuilder::new().build());
+    let ascii_art = artem::convert(
+        image,
+        &ConfigBuilder::new()
+            .target_size(NonZeroU32::new(250).unwrap())
+            .build(),
+    );
     println!("{}", ascii_art);
-}
-
-#[derive(serde::Deserialize)]
-struct Joke {
-    joke: String,
 }
